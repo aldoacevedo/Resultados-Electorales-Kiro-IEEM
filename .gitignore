@@ -4,6 +4,13 @@ SHP_DL_SECC_2005_2023/SHP_2011/SECCION_Clip_Project1.*
 SHP_DL_SECC_2005_2023/SHP_2017/SECCION.*
 SHP_DL_SECC_2005_2023/SHP_2023/SECCION.*
 
+# Carpetas y archivos ajenos al proyecto
+KIRO TANYA/
+sisco/
+KIRO_RESULTADOS_ELECTORALES/
+Análisis electral.ipynb
+verificar_totales.py
+
 # Python
 __pycache__/
 *.py[cod]
