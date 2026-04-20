@@ -31,8 +31,12 @@ st.set_page_config(
 
 # Botón para volver a la portada en el sidebar
 with st.sidebar:
-    if st.button("← Portada"):
-        st.switch_page("app.py")
+    st.markdown(
+        '<a href="/" target="_self" style="'
+        'color:#e91e8c;text-decoration:none;font-weight:600;font-size:0.85rem;">'
+        '← Portada</a>',
+        unsafe_allow_html=True,
+    )
 
 # ── Paleta IEEM ───────────────────────────────────────────────────────────────
 IEEM_DARK    = "#ffffff"
