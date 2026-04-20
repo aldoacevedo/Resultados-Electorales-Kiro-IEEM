@@ -148,16 +148,8 @@ los datos en gráficas, tablas y mapas interactivos.
 # ── Botón ─────────────────────────────────────────────────────────────────────
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
-    st.markdown(
-        f'<div style="text-align:center;margin-top:1rem;">'
-        f'<a href="/1_Sistema" target="_self" style="'
-        f'background-color:{MAGENTA};color:white;text-decoration:none;'
-        f'border-radius:8px;font-size:1.1rem;font-weight:700;'
-        f'padding:0.8rem 3rem;letter-spacing:1px;display:inline-block;">'
-        f'🗳️&nbsp;&nbsp;Entrar al sistema</a>'
-        f'</div>',
-        unsafe_allow_html=True,
-    )
+    if st.button("🗳️  Entrar al sistema", use_container_width=True):
+        st.switch_page("pages/1_Sistema.py")
 
 st.markdown('<hr class="divider">', unsafe_allow_html=True)
 st.markdown(
