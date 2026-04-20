@@ -1,0 +1,21 @@
+# Shapefiles seccionales (no se usan en la app)
+SHP_DL_SECC_2005_2023/SHP_2005/SECCION.*
+SHP_DL_SECC_2005_2023/SHP_2011/SECCION_Clip_Project1.*
+SHP_DL_SECC_2005_2023/SHP_2017/SECCION.*
+SHP_DL_SECC_2005_2023/SHP_2023/SECCION.*
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+
+# Streamlit cache
+.streamlit/
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
