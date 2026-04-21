@@ -434,9 +434,19 @@ elif seccion == "🗺️ Mapa por distrito":
     from data.geo_loader import cargar_geo, join_electoral_geo
 
     fuerzas_m = [f for f in FUERZAS_POR_ANIO[anio_global] if f in datos[anio_global].columns]
-    c1, c2 = st.columns([1, 2])
+
+    c1, c2, c3 = st.columns([1, 1, 1])
     with c1:
         fuerza_m = st.selectbox("Fuerza política", fuerzas_m)
+    with c2:
+        # Selector de distrito — "Todos" muestra el mapa estatal
+        df_anio_m = datos[anio_global]
+        if "es_extranjero" in df_anio_m.columns:
+            df_anio_m = df_anio_m[~df_anio_m["es_extranjero"]]
+        distritos_m = ["Todos"] + sorted(df_anio_m["distrito"].dropna().tolist())
+        distrito_m = st.selectbox("Distrito", distritos_m)
+
+    distrito_sel = None if distrito_m == "Todos" else distrito_m
 
     @st.cache_data
     def cargar_geo_cached(anio):
@@ -446,8 +456,37 @@ elif seccion == "🗺️ Mapa por distrito":
         gdf = cargar_geo_cached(anio_global)
         gdf_merged = join_electoral_geo(datos[anio_global], gdf)
 
-    fig_mapa = grafico_mapa_shp(gdf_merged, anio_global, fuerza_m, porcentual)
-    st.plotly_chart(aplicar_tema(fig_mapa), use_container_width=True)
+    # Si se seleccionó un distrito, hacer zoom sobre él
+    if distrito_sel and not gdf_merged[gdf_merged["distrito"] == distrito_sel].empty:
+        gdf_sel = gdf_merged[gdf_merged["distrito"] == distrito_sel]
+        bounds = gdf_sel.geometry.total_bounds  # [minx, miny, maxx, maxy]
+        centro = {"lat": (bounds[1] + bounds[3]) / 2, "lon": (bounds[0] + bounds[2]) / 2}
+        zoom_m = 9
+    else:
+        centro = {"lat": 19.35, "lon": -99.65}
+        zoom_m = 7
+
+    fig_mapa = grafico_mapa_shp(gdf_merged, anio_global, fuerza_m, porcentual,
+                                 distrito_sel=distrito_sel)
+    # Ajustar zoom y centro si hay distrito seleccionado
+    if distrito_sel:
+        fig_mapa.update_layout(
+            mapbox=dict(zoom=zoom_m, center=centro)
+        )
+    st.plotly_chart(fig_mapa, use_container_width=True)
+
+    # Mostrar datos del distrito seleccionado
+    if distrito_sel:
+        fila = df_anio_m[df_anio_m["distrito"] == distrito_sel]
+        if not fila.empty:
+            st.markdown(f"<div style='color:{IEEM_MAGENTA};font-weight:600;margin-top:0.5rem;'>Resultados — {distrito_sel}</div>", unsafe_allow_html=True)
+            fuerzas_d = [f for f in FUERZAS_POR_ANIO[anio_global] if f in fila.columns]
+            total_val = fila["votos_validos"].values[0]
+            cols_d = st.columns(len(fuerzas_d))
+            for i, f in enumerate(fuerzas_d):
+                v = fila[f].values[0]
+                pct = v / total_val * 100 if total_val else 0
+                cols_d[i].metric(f, f"{v:,.0f} ({pct:.1f}%)")
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # SECCIÓN 4 — Tablas

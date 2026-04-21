@@ -42,9 +42,25 @@ FUERZAS_POR_ANIO = {
 def _limpiar_distrito(nombre):
     if pd.isna(nombre):
         return None
-    nombre = str(nombre).strip()
-    # quitar número romano al inicio si viene como "I - TOLUCA"
-    return nombre
+    return str(nombre).strip()
+
+
+def _nombre_cabecera(nombre):
+    """Extrae solo el nombre de la cabecera, quitando numeral romano y números de juicio.
+    Ej: 'I - TOLUCA (PARTE) 1' → 'TOLUCA'
+        'XIV - JILOTEPEC 4'    → 'JILOTEPEC'
+    """
+    if pd.isna(nombre):
+        return None
+    s = str(nombre).strip()
+    # quitar numeral romano del inicio: "I - ", "XIV - ", etc.
+    import re
+    s = re.sub(r'^[IVXLC]+\s*-\s*', '', s)
+    # quitar número de juicio al final: " 1", " 4", " 21"
+    s = re.sub(r'\s+\d+$', '', s)
+    # quitar "(PARTE)"
+    s = s.replace('(PARTE)', '').strip()
+    return s
 
 
 def cargar_2005():
@@ -60,7 +76,7 @@ def cargar_2005():
 
     resultado = pd.DataFrame()
     nums = pd.to_numeric(datos.iloc[:, 0], errors="coerce").astype(int)
-    nombres = datos.iloc[:, 1].apply(_limpiar_distrito)
+    nombres = datos.iloc[:, 1].apply(_nombre_cabecera)
     resultado["distrito"]              = nums.astype(str).str.zfill(2) + " - " + nombres.values
     resultado["lista_nominal"]         = pd.to_numeric(datos.iloc[:, 2], errors="coerce").values
     resultado["PAN - Convergencia"]    = pd.to_numeric(datos.iloc[:, 3], errors="coerce").values
@@ -108,8 +124,9 @@ def cargar_2011():
             return nombre
         primera = nombre.strip().split()[0].upper()
         num = romanos.get(primera)
+        cabecera = _nombre_cabecera(nombre)
         if num:
-            return f"{num:02d} - {nombre}"
+            return f"{num:02d} - {cabecera}"
         return nombre
     resultado["distrito"]          = [prefijo_romano(n) for n in nombres.values]
     resultado["lista_nominal"]     = pd.to_numeric(datos.iloc[:, 1], errors="coerce").values

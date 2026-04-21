@@ -52,40 +52,57 @@ def grafico_barras_anio(df: pd.DataFrame, anio: int, porcentual: bool = False):
 # ── 2. Barras comparativas entre años ─────────────────────────────────────────
 def grafico_comparativo_fuerzas(totales_df: pd.DataFrame, porcentual: bool = False):
     """Compara participación de cada fuerza a lo largo de los 4 años."""
-    # Construir tabla larga
-    filas = []
-    for anio in totales_df.index:
-        fuerzas = FUERZAS_POR_ANIO[anio]
-        total_validos = totales_df.loc[anio, "votos_validos"]
-        for f in fuerzas:
-            if f in totales_df.columns:
-                votos = totales_df.loc[anio, f]
-                filas.append({
-                    "anio": str(anio),
-                    "fuerza": f,
-                    "votos": votos,
-                    "pct": votos / total_validos * 100 if total_validos else 0,
-                })
-    df_long = pd.DataFrame(filas)
-    y_col = "pct" if porcentual else "votos"
     ytitle = "% de votos válidos" if porcentual else "Votos"
+    ANIOS = ["2005", "2011", "2017", "2023"]
 
-    fig = px.bar(
-        df_long, x="anio", y=y_col, color="fuerza",
-        barmode="group",
-        color_discrete_map={f: _color(f) for f in df_long["fuerza"].unique()},
-        text=df_long[y_col].apply(lambda v: f"{v:.1f}%" if porcentual else f"{v:,.0f}"),
-        labels={"anio": "Año", y_col: ytitle, "fuerza": "Fuerza política"},
-        title="Comparativo de fuerzas políticas 2005–2023",
-    )
-    fig.update_traces(textposition="outside")
+    fig = go.Figure()
+    fuerzas_vistas = set()
+
+    for anio in [2005, 2011, 2017, 2023]:
+        total_validos = totales_df.loc[anio, "votos_validos"]
+        for f in FUERZAS_POR_ANIO[anio]:
+            if f not in totales_df.columns:
+                continue
+            v = totales_df.loc[anio, f]
+            val = v / total_validos * 100 if porcentual else v
+            texto = f"{val:.1f}%" if porcentual else f"{val:,.0f}"
+            nombre_leyenda = f"{anio} · {f}"
+            fig.add_trace(go.Bar(
+                name=nombre_leyenda,
+                x=[str(anio)],
+                y=[val],
+                text=[texto],
+                textposition="outside",
+                textfont=dict(size=13, color="#222222"),
+                marker_color=_color(f),
+                legendgroup=str(anio),
+                legendgrouptitle_text=str(anio) if f == FUERZAS_POR_ANIO[anio][0] else None,
+                showlegend=True,
+            ))
+            fuerzas_vistas.add(f)
+
+    fig.add_vline(x=0.5, line_width=1, line_dash="dot", line_color="#cccccc")
+    fig.add_vline(x=1.5, line_width=1, line_dash="dot", line_color="#cccccc")
+    fig.add_vline(x=2.5, line_width=1, line_dash="dot", line_color="#cccccc")
+
     fig.update_layout(
+        barmode="group",
+        bargap=0.2,
+        bargroupgap=0.03,
+        title="Comparativo de fuerzas políticas 2005–2023",
+        xaxis_title="Año",
+        yaxis_title=ytitle,
         plot_bgcolor="white",
         yaxis=dict(gridcolor="#eeeeee"),
-        height=450,
-        bargap=0.2,
-        bargroupgap=0.1,
-        margin=dict(t=60, b=60, l=60, r=20),
+        height=550,
+        margin=dict(t=80, b=60, l=60, r=20),
+        xaxis=dict(
+            type="category",
+            categoryorder="array",
+            categoryarray=ANIOS,
+            tickfont=dict(size=14, color="#222222"),
+        ),
+        legend=dict(title="Fuerza política"),
     )
     return fig
 
@@ -211,23 +228,48 @@ def grafico_distritos(df: pd.DataFrame, anio: int, fuerza: str, porcentual: bool
     return fig
 
 
-# ── 7. Mapa coroplético por distrito ──────────────────────────────────────────
-def grafico_mapa_shp(gdf_merged, anio: int, fuerza: str, porcentual: bool = True):
-    """Mapa coroplético usando GeoDataFrame ya unido con datos electorales."""
-    import plotly.express as px
+# Escalas de color por fuerza
+ESCALAS_COLOR = {
+    # PRI y coaliciones con PRI → rojos
+    "Alianza por México":   "Reds",
+    "Unidos por Ti":        "Reds",
+    "Alianza PRI":          "Reds",
+    # MORENA y coaliciones → vino (púrpura oscuro)
+    "Unidos para Ganar":    "RdPu",
+    "Unidos Podemos Más":   "RdPu",
+    "MORENA":               "RdPu",
+    "Sigamos Haciendo Historia": "RdPu",
+    # PAN → azules
+    "PAN - Convergencia":   "Blues",
+    "PAN":                  "Blues",
+    "Fuerza y Corazón por el Edo. de Méx": "Blues",
+    # Otros
+    "PRD":                  "YlOrBr",
+    "PT":                   "OrRd",
+    "Candidato Independiente": "Greys",
+}
 
+def _escala(fuerza: str) -> str:
+    return ESCALAS_COLOR.get(fuerza, "Blues")
+
+
+def grafico_mapa_shp(gdf_merged, anio: int, fuerza: str, porcentual: bool = True,
+                     distrito_sel: str = None):
+    """Mapa coroplético usando GeoDataFrame ya unido con datos electorales.
+    Si distrito_sel es un nombre de distrito, lo resalta con borde."""
     if fuerza not in gdf_merged.columns:
         return go.Figure()
 
     gdf2 = gdf_merged.copy()
     if porcentual:
         gdf2["valor"] = gdf2[fuerza] / gdf2["votos_validos"] * 100
-        zlabel = f"% votos válidos"
+        zlabel = "% votos válidos"
     else:
         gdf2["valor"] = gdf2[fuerza]
         zlabel = "Votos"
 
-    gdf2 = gdf2[gdf2["valor"].notna()]
+    gdf2 = gdf2[gdf2["valor"].notna()].copy()
+    gdf2["resaltado"] = gdf2["distrito"] == distrito_sel if distrito_sel else False
     geojson = json.loads(gdf2[["num_distrito", "geometry"]].to_json())
 
     fig = px.choropleth_mapbox(
@@ -236,7 +278,7 @@ def grafico_mapa_shp(gdf_merged, anio: int, fuerza: str, porcentual: bool = True
         locations="num_distrito",
         featureidkey="properties.num_distrito",
         color="valor",
-        color_continuous_scale="Blues",
+        color_continuous_scale=_escala(fuerza),
         mapbox_style="carto-positron",
         zoom=7,
         center={"lat": 19.35, "lon": -99.65},
@@ -245,6 +287,24 @@ def grafico_mapa_shp(gdf_merged, anio: int, fuerza: str, porcentual: bool = True
         hover_data={"distrito": True, "valor": ":.1f", "num_distrito": False},
         title=f"{fuerza} por distrito — {anio}",
     )
+
+    # Resaltar distrito seleccionado con borde negro
+    if distrito_sel:
+        gdf_sel = gdf2[gdf2["distrito"] == distrito_sel]
+        if not gdf_sel.empty:
+            for _, row in gdf_sel.iterrows():
+                geom = row.geometry
+                polys = [geom] if geom.geom_type == "Polygon" else list(geom.geoms)
+                for poly in polys:
+                    x, y = poly.exterior.xy
+                    fig.add_trace(go.Scattermapbox(
+                        lon=list(x), lat=list(y),
+                        mode="lines",
+                        line=dict(color="black", width=3),
+                        showlegend=False,
+                        hoverinfo="skip",
+                    ))
+
     fig.update_layout(
         margin={"r": 0, "t": 40, "l": 0, "b": 0},
         coloraxis_colorbar=dict(title=zlabel),
