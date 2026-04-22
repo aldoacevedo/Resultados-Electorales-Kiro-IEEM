@@ -234,7 +234,8 @@ ESCALAS_COLOR = {
     "Alianza por México":   "Reds",
     "Unidos por Ti":        "Reds",
     "Alianza PRI":          "Reds",
-    # MORENA y coaliciones → vino (púrpura oscuro)
+    "Fuerza y Corazón por el Edo. de Méx": "Reds",
+    # MORENA y coaliciones → vino
     "Unidos para Ganar":    "RdPu",
     "Unidos Podemos Más":   "RdPu",
     "MORENA":               "RdPu",
@@ -242,7 +243,6 @@ ESCALAS_COLOR = {
     # PAN → azules
     "PAN - Convergencia":   "Blues",
     "PAN":                  "Blues",
-    "Fuerza y Corazón por el Edo. de Méx": "Blues",
     # Otros
     "PRD":                  "YlOrBr",
     "PT":                   "OrRd",
